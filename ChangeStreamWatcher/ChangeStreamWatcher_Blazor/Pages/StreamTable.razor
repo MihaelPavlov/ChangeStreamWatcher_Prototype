@@ -1,0 +1,22 @@
+﻿@page "/streamTable"
+@using ChangeStreamWatcher_Blazor.Components;
+@using ChangeStreamWatcher_Blazor.Services
+@using MongoDB.Bson
+@inject ChangeStreamWatcher watcher
+
+<h1>Stream Table Logs Operations</h1>
+
+
+<TableLayout Elements="@WriteColums()"></TableLayout>
+@code {
+
+    public List<BsonDocument> Collection { get; set; }
+    public List<string> WriteColums()
+    {
+        var list = new List<string>();
+        list.Add("Id");
+        list.Add("Operation Type");
+        return list;
+    }
+    
+}

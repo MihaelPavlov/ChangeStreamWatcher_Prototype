@@ -1,0 +1,30 @@
+﻿@using ChangeStreamWatcher_Blazor.Services 
+@inject ChangeStreamWatcher watcher
+<h3>TableLayout</h3>
+
+<MudTable Items="@Elements" Hover="true" Breakpoint="Breakpoint.Sm" LoadingProgressColor="Color.Info">
+    <HeaderContent>
+      @foreach (var item in Elements)
+      {
+        <MudTh>@item</MudTh>
+
+      }
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Nr">context</MudTd>
+        <MudTd DataLabel="Sign">context</MudTd>
+        <MudTd DataLabel="Name">context</MudTd>
+    </RowTemplate>
+</MudTable>
+
+
+@code {
+    [Parameter]
+    public IEnumerable<string> Elements { get; set; }
+
+    protected override void OnInitialized()
+    {
+        var collection = watcher.GetCollectionByName("Logs");
+    }
+}
+
