@@ -2,21 +2,44 @@
 @using ChangeStreamWatcher_Blazor.Components;
 @using ChangeStreamWatcher_Blazor.Services
 @using MongoDB.Bson
+@using ChangeStreamWatcher_Blazor.Data
 @inject ChangeStreamWatcher watcher
 
 <h1>Stream Table Logs Operations</h1>
 
 
-<TableLayout Elements="@WriteColums()"></TableLayout>
+<TableLayout ></TableLayout>
 @code {
 
     public List<BsonDocument> Collection { get; set; }
-    public List<string> WriteColums()
+
+    public List<Log> WriteColums()
     {
-        var list = new List<string>();
-        list.Add("Id");
-        list.Add("Operation Type");
+        var logs = watcher.GetCollectionByName("Logs");
+        var list = new List<Log>();
+        foreach (var log in logs)
+        {
+            var logAr = log.ToArray().Select(x => x.Value.ToString()).ToArray();
+
+            var newLog = new Log
+            {
+                Id = logAr[0],
+                Date_Time = logAr[1],
+                Operation_Type = logAr[2],
+                Document_Key = logAr[3],
+                Collection_Namespace = logAr[4],
+                Clusture_Time = logAr[5],
+                Backing_Document = logAr[6],
+                Full_Document = logAr[7],
+                Update_Description = logAr[8],
+            };
+            list.Add(newLog);
+        }
+
+
         return list;
     }
-    
+
+
+
 }

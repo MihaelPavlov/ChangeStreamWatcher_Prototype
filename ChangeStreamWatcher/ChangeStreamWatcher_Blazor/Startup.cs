@@ -29,9 +29,9 @@ namespace ChangeStreamWatcher_Blazor
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddSingleton<ChangeStreamWatcher>();
+            services.AddMudServices();
             services.AddRazorPages();
             services.AddServerSideBlazor();
-            services.AddMudServices();
 
         }
 

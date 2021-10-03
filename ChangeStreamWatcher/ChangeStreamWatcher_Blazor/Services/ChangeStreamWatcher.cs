@@ -105,13 +105,13 @@
 
             await collection.InsertOneAsync(document);
         }
-        public async Task<List<BsonDocument>> GetCollectionByName(string collectionName)
+        public  List<BsonDocument> GetCollectionByName(string collectionName)
         {
             MongoClient dbClient = new MongoClient("mongodb://localhost:27017/TestDatabase");
             var db = dbClient.GetDatabase("TestDatabase");
 
             IMongoCollection<BsonDocument> dbCollection = db.GetCollection<BsonDocument>(collectionName);
-            var documents = await dbCollection.Find(new BsonDocument()).ToListAsync();
+            var documents =  dbCollection.Find(new BsonDocument()).ToList();
             return documents;
 
         }

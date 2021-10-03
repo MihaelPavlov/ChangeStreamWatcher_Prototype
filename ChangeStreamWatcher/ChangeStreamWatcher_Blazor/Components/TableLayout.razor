@@ -1,30 +1,90 @@
-﻿@using ChangeStreamWatcher_Blazor.Services 
+﻿@using ChangeStreamWatcher_Blazor.Services
+@using ChangeStreamWatcher_Blazor.Data
+
 @inject ChangeStreamWatcher watcher
 <h3>TableLayout</h3>
 
-<MudTable Items="@Elements" Hover="true" Breakpoint="Breakpoint.Sm" LoadingProgressColor="Color.Info">
+<MudTable Items="@WriteColums()" Hover="true" Breakpoint="Breakpoint.Sm" LoadingProgressColor="Color.Info">
     <HeaderContent>
-      @foreach (var item in Elements)
-      {
-        <MudTh>@item</MudTh>
-
-      }
+        <MudTh>_id</MudTh>
+        <MudTh>date-time</MudTh>
+        <MudTh>operation_type</MudTh>
+        <MudTh>document_key</MudTh>
+        <MudTh>collection_namespace</MudTh>
+        <MudTh>clusture_time</MudTh>
+        <MudTh>backing_document</MudTh>
+        <MudTh>full_document</MudTh>
+        <MudTh>update_description</MudTh>
+        <MudTh>IsDone</MudTh>
     </HeaderContent>
     <RowTemplate>
-        <MudTd DataLabel="Nr">context</MudTd>
-        <MudTd DataLabel="Sign">context</MudTd>
-        <MudTd DataLabel="Name">context</MudTd>
+
+        <MudTd DataLabel="_id">@context.Id</MudTd>
+        <MudTd DataLabel="date-time">@context.Date_Time</MudTd>
+        <MudTd DataLabel="operation_type">@context.Operation_Type</MudTd>
+        <MudTd DataLabel="document_key">@context.Document_Key</MudTd>
+        <MudTd DataLabel="collection_namespace">@context.Collection_Namespace</MudTd>
+        <MudTd DataLabel="clusture_time">@context.Clusture_Time</MudTd>
+        <MudTd DataLabel="backing_document">@context.Backing_Document</MudTd>
+        <MudTd DataLabel="full_document">@context.Full_Document</MudTd>
+        <MudTd DataLabel="update_description">@context.Update_Description</MudTd>
+       @{ 
+           if (context.Operation_Type == "Delete")
+           {
+           <MudChip Color="Color.Error">Delete</MudChip>
+
+           }
+           else if (context.Operation_Type == "Update")
+           {
+            <MudChip Color="Color.Success">Update</MudChip>
+
+           }
+           else if (context.Operation_Type == "Insert")
+           {
+                <MudChip Color="Color.Warning">Insert</MudChip>
+           }
+       }
+
+
     </RowTemplate>
 </MudTable>
 
 
 @code {
-    [Parameter]
-    public IEnumerable<string> Elements { get; set; }
+
+    public IEnumerable<Log> Elements { get; set; }
 
     protected override void OnInitialized()
     {
         var collection = watcher.GetCollectionByName("Logs");
+    }
+
+  
+    public List<Log> WriteColums()
+    {
+        var logs = watcher.GetCollectionByName("Logs");
+        var list = new List<Log>();
+        foreach (var log in logs)
+        {
+            var logAr = log.ToArray().Select(x => x.Value.ToString()).ToArray();
+
+            var newLog = new Log
+            {
+                Id = logAr[0],
+                Date_Time = logAr[1],
+                Operation_Type = logAr[2],
+                Document_Key = logAr[3],
+                Collection_Namespace = logAr[4],
+                Clusture_Time = logAr[5],
+                Backing_Document = logAr[6],
+                Full_Document = logAr[7],
+                Update_Description = logAr[8],
+            };
+            list.Add(newLog);
+        }
+
+
+        return list;
     }
 }
 
