@@ -1,10 +1,18 @@
 ﻿@using ChangeStreamWatcher_Blazor.Services
 @using ChangeStreamWatcher_Blazor.Data
 
+
 @inject ChangeStreamWatcher watcher
 <h3>TableLayout</h3>
 
-<MudTable Items="@WriteColums()" Hover="true" Breakpoint="Breakpoint.Sm" LoadingProgressColor="Color.Info">
+<MudTable Items="Elements" Dense="false" Hover="true" Bordered="false" Striped="false">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Logs</MudText>
+        <MudToolBarSpacer />
+        <MudTextField T="string" ValueChanged="@(searchTerm => GetLogs(searchTerm))" Placeholder="Search By Operation Type"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
     <HeaderContent>
         <MudTh>_id</MudTh>
         <MudTh>date-time</MudTh>
@@ -25,45 +33,95 @@
         <MudTd DataLabel="document_key">@context.Document_Key</MudTd>
         <MudTd DataLabel="collection_namespace">@context.Collection_Namespace</MudTd>
         <MudTd DataLabel="clusture_time">@context.Clusture_Time</MudTd>
-        <MudTd DataLabel="backing_document">@context.Backing_Document</MudTd>
-        <MudTd DataLabel="full_document">@context.Full_Document</MudTd>
+        <MudTd DataLabel="backing_document">
+            <MudLink Href="#" Underline="Underline.Always">Backing Doc.</MudLink>
+        </MudTd>
+        <MudTd DataLabel="full_document">
+            <MudLink Href="#" Underline="Underline.Always">Full Doc.</MudLink>
+        </MudTd>
         <MudTd DataLabel="update_description">@context.Update_Description</MudTd>
-       @{ 
-           if (context.Operation_Type == "Delete")
-           {
-           <MudChip Color="Color.Error">Delete</MudChip>
+        @{
+            if (context.Operation_Type == "Delete")
+            {
+                <MudChip Color="Color.Error">Delete</MudChip>
 
-           }
-           else if (context.Operation_Type == "Update")
-           {
-            <MudChip Color="Color.Success">Update</MudChip>
+            }
+            else if (context.Operation_Type == "Update")
+            {
+                <MudChip Color="Color.Success">Update</MudChip>
 
-           }
-           else if (context.Operation_Type == "Insert")
-           {
+            }
+            else if (context.Operation_Type == "Insert")
+            {
                 <MudChip Color="Color.Warning">Insert</MudChip>
-           }
-       }
+            }
+        }
 
 
     </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
 </MudTable>
 
 
 @code {
 
-    public IEnumerable<Log> Elements { get; set; }
+    public List<Log> Elements { get; set; }
+
+    private string searchString = "";
+    private List<Log> selectedItem1 = null;
+    private List<Log> selectedItems = new List<Log>();
 
     protected override void OnInitialized()
     {
-        var collection = watcher.GetCollectionByName("Logs");
+        GetLogs();
+
     }
 
-  
-    public List<Log> WriteColums()
+    private bool FilterFunc(List<Log> logs) => Filter(searchString);
+
+    public bool Filter(string searchString = null)
+    {
+        if (searchString != null)
+        {
+            return true;
+        }
+        return false;
+    }
+    public void GetLogs(string searchString = null)
     {
         var logs = watcher.GetCollectionByName("Logs");
         var list = new List<Log>();
+        if (searchString != null)
+        {
+            foreach (var log in logs)
+            {
+                var logAr = log.ToArray().Select(x => x.Value.ToString()).ToArray();
+
+                var newLog = new Log
+                {
+                    Id = logAr[0],
+                    Date_Time = logAr[1],
+                    Operation_Type = logAr[2],
+                    Document_Key = logAr[3],
+                    Collection_Namespace = logAr[4],
+                    Clusture_Time = logAr[5],
+                    Backing_Document = logAr[6],
+                    Full_Document = logAr[7],
+                    Update_Description = logAr[8],
+                };
+                if (newLog.Operation_Type == searchString)
+                {
+
+                    list.Add(newLog);
+                }
+            }
+
+
+            this.Elements = list;
+            return;
+        }
         foreach (var log in logs)
         {
             var logAr = log.ToArray().Select(x => x.Value.ToString()).ToArray();
@@ -84,7 +142,7 @@
         }
 
 
-        return list;
+        this.Elements= list;
     }
 }
 
