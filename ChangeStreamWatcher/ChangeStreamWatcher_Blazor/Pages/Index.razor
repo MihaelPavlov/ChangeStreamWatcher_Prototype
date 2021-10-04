@@ -1,16 +1,26 @@
 ﻿@page "/"
 @using ChangeStreamWatcher_Blazor.Services
+@using MongoDB.Driver 
+@using MongoDB.Bson 
 @inject ChangeStreamWatcher watcher
 <h1>Hello, world!</h1>
 
 Welcome to your new app.
-<MudButton Variant="Variant.Filled" OnClick="@(async () => await watcher.Start())" Disabled="@watcher.Initialized" Color="Color.Primary">@ChangeButtonContent()</MudButton>
+
+<MudItem xs="12" sm="6" md="4">
+    <MudSelect T="EventTypes" @bind-Value="@eventType" Label="Event Type" Variant="Variant.Filled">
+        <MudSelectItem  Value="@(EventTypes.Created)" />
+        <MudSelectItem Value="@(EventTypes.Deleted)" />
+        <MudSelectItem Value="@(EventTypes.Updated)" />
+    </MudSelect>
+</MudItem>
+<MudButton Variant="Variant.Filled" OnClick="@(async () => await watcher.Start(eventType,null))" Disabled="@watcher.Initialized" Color="Color.Primary">@ChangeButtonContent()</MudButton>
 
 <SurveyPrompt Title="How is Blazor working for you?" />
 
 @code
 {
-
+    public EventTypes eventType { get; set; }
     public string ChangeButtonContent()
     {
         return !watcher.Initialized ? "Start Stream Watcher" : "Started";

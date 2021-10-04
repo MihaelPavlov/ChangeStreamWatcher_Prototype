@@ -3,7 +3,6 @@
 
 
 @inject ChangeStreamWatcher watcher
-<h3>TableLayout</h3>
 
 <MudTable Items="Elements" Dense="false" Hover="true" Bordered="false" Striped="false">
     <ToolBarContent>
@@ -15,47 +14,34 @@
     </ToolBarContent>
     <HeaderContent>
         <MudTh>_id</MudTh>
-        <MudTh>date-time</MudTh>
-        <MudTh>operation_type</MudTh>
-        <MudTh>document_key</MudTh>
-        <MudTh>collection_namespace</MudTh>
-        <MudTh>clusture_time</MudTh>
-        <MudTh>backing_document</MudTh>
-        <MudTh>full_document</MudTh>
-        <MudTh>update_description</MudTh>
-        <MudTh>IsDone</MudTh>
+        <MudTh>Operation Type</MudTh>
+        <MudTh>Full Document</MudTh>
     </HeaderContent>
     <RowTemplate>
 
         <MudTd DataLabel="_id">@context.Id</MudTd>
-        <MudTd DataLabel="date-time">@context.Date_Time</MudTd>
-        <MudTd DataLabel="operation_type">@context.Operation_Type</MudTd>
-        <MudTd DataLabel="document_key">@context.Document_Key</MudTd>
-        <MudTd DataLabel="collection_namespace">@context.Collection_Namespace</MudTd>
-        <MudTd DataLabel="clusture_time">@context.Clusture_Time</MudTd>
-        <MudTd DataLabel="backing_document">
-            <MudLink Href="#" Underline="Underline.Always">Backing Doc.</MudLink>
-        </MudTd>
-        <MudTd DataLabel="full_document">
-            <MudLink Href="#" Underline="Underline.Always">Full Doc.</MudLink>
-        </MudTd>
-        <MudTd DataLabel="update_description">@context.Update_Description</MudTd>
+
         @{
-            if (context.Operation_Type == "Delete")
+            if (context.OperationType == "Delete")
             {
-                <MudChip Color="Color.Error">Delete</MudChip>
-
+                <MudTd DataLabel="Operation Type">
+                    <MudChip Color="Color.Error">Delete</MudChip>
+                </MudTd>
             }
-            else if (context.Operation_Type == "Update")
+            else if (context.OperationType == "Update")
             {
-                <MudChip Color="Color.Success">Update</MudChip>
-
+                <MudTd DataLabel="Operation Type">
+                    <MudChip Color="Color.Success">Update</MudChip>
+                </MudTd>
             }
-            else if (context.Operation_Type == "Insert")
+            else if (context.OperationType == "Insert")
             {
-                <MudChip Color="Color.Warning">Insert</MudChip>
+                <MudTd DataLabel="Operation Type">
+                    <MudChip Color="Color.Warning">Insert</MudChip>
+                </MudTd>
             }
         }
+        <MudTd DataLabel="full_document">@context.FullDocument</MudTd>
 
 
     </RowTemplate>
@@ -76,7 +62,6 @@
     protected override void OnInitialized()
     {
         GetLogs();
-
     }
 
     private bool FilterFunc(List<Log> logs) => Filter(searchString);
@@ -102,16 +87,10 @@
                 var newLog = new Log
                 {
                     Id = logAr[0],
-                    Date_Time = logAr[1],
-                    Operation_Type = logAr[2],
-                    Document_Key = logAr[3],
-                    Collection_Namespace = logAr[4],
-                    Clusture_Time = logAr[5],
-                    Backing_Document = logAr[6],
-                    Full_Document = logAr[7],
-                    Update_Description = logAr[8],
+                    OperationType = logAr[1],
+                    FullDocument = logAr[2],
                 };
-                if (newLog.Operation_Type == searchString)
+                if (newLog.OperationType == searchString)
                 {
 
                     list.Add(newLog);
@@ -129,20 +108,14 @@
             var newLog = new Log
             {
                 Id = logAr[0],
-                Date_Time = logAr[1],
-                Operation_Type = logAr[2],
-                Document_Key = logAr[3],
-                Collection_Namespace = logAr[4],
-                Clusture_Time = logAr[5],
-                Backing_Document = logAr[6],
-                Full_Document = logAr[7],
-                Update_Description = logAr[8],
+                OperationType = logAr[1],
+                FullDocument = logAr[2],
             };
             list.Add(newLog);
         }
 
 
-        this.Elements= list;
+        this.Elements = list;
     }
 }
 

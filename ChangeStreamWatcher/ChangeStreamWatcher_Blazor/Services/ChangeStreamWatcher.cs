@@ -13,7 +13,6 @@
         public ChangeStreamOptions _options;
         public CancellationToken _cancelToken;
 
-
         /// <summary>
         /// True, if this instance is initialised and watching.
         /// </summary>
@@ -25,7 +24,7 @@
         private int _counter;
         private string _operationType;
 
-        public async Task Start()
+        public async Task Start(EventTypes eventTypes, FilterDefinition<ChangeStreamDocument<BsonDocument>> filter)
         {
             if (this._initialized)
             {
@@ -35,36 +34,65 @@
 
             this._counter++;
             this._initialized = true;
-            await StartWatching();
+
+            var databaseOperationTypes = new HashSet<ChangeStreamOperationType>() { ChangeStreamOperationType.Invalidate };
+
+            if ((eventTypes & EventTypes.Created) != 0)
+                databaseOperationTypes.Add(ChangeStreamOperationType.Insert);
+
+            if ((eventTypes & EventTypes.Updated) != 0)
+            {
+                databaseOperationTypes.Add(ChangeStreamOperationType.Update);
+                databaseOperationTypes.Add(ChangeStreamOperationType.Replace);
+            }
+
+            if ((eventTypes & EventTypes.Deleted) != 0)
+                databaseOperationTypes.Add(ChangeStreamOperationType.Delete);
+            var changeStreamOptions = new ChangeStreamOptions
+            {
+                FullDocument = ChangeStreamFullDocumentOption.UpdateLookup
+            };
+            var filters = Builders<ChangeStreamDocument<BsonDocument>>.Filter.Where(x => databaseOperationTypes.Contains(x.OperationType));
+
+            if (filter != null)
+                filters &= filter;
+
+            var pipelines = new IPipelineStageDefinition[] {
+
+                PipelineStageDefinitionBuilder.Match(filters),
+
+                PipelineStageDefinitionBuilder.Project<ChangeStreamDocument<BsonDocument>, ChangeStreamDocument<BsonDocument>>(@"
+                {
+                    _id: 1,
+                    operationType: 1,
+                    fullDocument: { $ifNull: ['$fullDocument', '$documentKey'] }
+                }")
+            };
+            await StartWatching(pipelines, changeStreamOptions);
         }
 
-        public async Task StartWatching()
+        public async Task StartWatching(IPipelineStageDefinition[] pipeline, ChangeStreamOptions changeStreamOptions)
         {
             MongoClient dbClient = new MongoClient("mongodb://localhost:27017/TestDatabase");
 
             var database = dbClient.GetDatabase("TestDatabase");
             var collection = database.GetCollection<BsonDocument>("TestData");
-            CreateData(collection);
-            using (var cursor = await collection.WatchAsync())
+            await CreateData(collection);
+
+            using (var cursor = await collection.WatchAsync<ChangeStreamDocument<BsonDocument>>(pipeline, changeStreamOptions).ConfigureAwait(false))
             {
-                while (await cursor.MoveNextAsync())
+                while (await cursor.MoveNextAsync().ConfigureAwait(false))
                 {
                     if (cursor.Current.Any())
                     {
-
                         if (cursor.Current.First().OperationType != ChangeStreamOperationType.Invalidate)
                         {
-                            CreateLogInTheDatabase(cursor.Current.First(), database);
-                            Console.WriteLine(cursor.Current.First().OperationType);
-                            Console.WriteLine(cursor.Current.First().FullDocument);
-                            Console.WriteLine(cursor);
+                            await CreateLogInTheDatabase(cursor.Current.First(), database);
+                        }
 
-                        }
-                        else
-                        {
-                        }
                         this._operationType = cursor.Current.First().OperationType.ToString();
                     }
+
                 }
 
             }
@@ -76,15 +104,10 @@
             var document = new BsonDocument
             {
                 { "_id", Guid.NewGuid().ToString() },
-                { "date-time", $"{DateTime.UtcNow}"} ,
-                { "operation_type", $"{cursor.OperationType}"},
-                {"document_key", $"{cursor.DocumentKey}"} ,
-                {"collection_namespace", $"{cursor.CollectionNamespace}"} ,
-                { "clusture_time", $"{cursor.ClusterTime}"},
-                { "backing_document", $"{cursor.BackingDocument}"} ,
-                { "full_document", $"{cursor.FullDocument}"} ,
-                { "update_description", $"{cursor.UpdateDescription}"} ,
+                { "operationType", $"{cursor.OperationType}"},
+                { "fullDocument", $"{cursor.FullDocument}"},
             };
+
             await collection.InsertOneAsync(document);
         }
         public async Task CreateData(IMongoCollection<BsonDocument> collection)
@@ -94,28 +117,43 @@
                 { "student_id", 10000 },
                 { "scores", new BsonArray
                     {
-                    new BsonDocument{ {"type", "exam"}, {"score", 88.12334193287023 } },
-                    new BsonDocument{ {"type", "quiz"}, {"score", 74.92381029342834 } },
-                    new BsonDocument{ {"type", "homework"}, {"score", 89.97929384290324 } },
-                    new BsonDocument{ {"type", "homework"}, {"score", 82.12931030513218 } }
+                    new BsonDocument{ {"type", "exam"}, {"score", 88.12334193287023 } }
                     }
-                },
-                { "class_id", 480}
+                }
             };
 
             await collection.InsertOneAsync(document);
         }
-        public  List<BsonDocument> GetCollectionByName(string collectionName)
+        public List<BsonDocument> GetCollectionByName(string collectionName)
         {
             MongoClient dbClient = new MongoClient("mongodb://localhost:27017/TestDatabase");
             var db = dbClient.GetDatabase("TestDatabase");
 
             IMongoCollection<BsonDocument> dbCollection = db.GetCollection<BsonDocument>(collectionName);
-            var documents =  dbCollection.Find(new BsonDocument()).ToList();
+            var documents = dbCollection.Find(new BsonDocument()).ToList();
             return documents;
 
         }
     }
+    [Flags]
+    public enum EventTypes
+    {
+        /// <summary>
+        /// Created, fired on a document created event.
+        /// </summary>
+        Created = 1 << 1,
+
+        /// <summary>
+        /// Updated, fired on a document updated event.
+        /// </summary>
+        Updated = 1 << 2,
+
+        /// <summary>
+        /// Deleted, fired on a document deleted event.
+        /// </summary>
+        Deleted = 1 << 3
+    }
+
 
 }
 
