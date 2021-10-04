@@ -23,6 +23,7 @@
         private bool _initialized;
         private int _counter;
         private string _operationType;
+        private PipelineDefinition<ChangeStreamDocument<BsonDocument>, ChangeStreamDocument<BsonDocument>> _pipeline;
 
         public async Task Start(EventTypes eventTypes, FilterDefinition<ChangeStreamDocument<BsonDocument>> filter)
         {
@@ -52,34 +53,38 @@
             {
                 FullDocument = ChangeStreamFullDocumentOption.UpdateLookup
             };
+
             var filters = Builders<ChangeStreamDocument<BsonDocument>>.Filter.Where(x => databaseOperationTypes.Contains(x.OperationType));
 
             if (filter != null)
                 filters &= filter;
+            this._pipeline= new EmptyPipelineDefinition<ChangeStreamDocument<BsonDocument>>().Match("{ operationType: { $in: [ 'replace', 'insert', 'update' ] } }");
 
-            var pipelines = new IPipelineStageDefinition[] {
+            //this._pipeline = new IPipelineStageDefinition[] {
 
-                PipelineStageDefinitionBuilder.Match(filters),
 
-                PipelineStageDefinitionBuilder.Project<ChangeStreamDocument<BsonDocument>, ChangeStreamDocument<BsonDocument>>(@"
-                {
-                    _id: 1,
-                    operationType: 1,
-                    fullDocument: { $ifNull: ['$fullDocument', '$documentKey'] }
-                }")
-            };
-            await StartWatching(pipelines, changeStreamOptions);
+            //    PipelineStageDefinitionBuilder.Match(filters),
+
+            //    PipelineStageDefinitionBuilder.Project<ChangeStreamDocument<BsonDocument>, ChangeStreamDocument<BsonDocument>>(@"
+            //    {
+            //        _id: 1,
+            //        operationType: 1,
+            //        fullDocument: { $ifNull: ['$fullDocument', '$documentKey'] }
+            //    }")
+            //};
+            await StartWatching(this._pipeline, changeStreamOptions);
         }
 
-        public async Task StartWatching(IPipelineStageDefinition[] pipeline, ChangeStreamOptions changeStreamOptions)
+        public async Task StartWatching(PipelineDefinition<ChangeStreamDocument<BsonDocument>, ChangeStreamDocument<BsonDocument>> pipeline, ChangeStreamOptions changeStreamOptions)
         {
             MongoClient dbClient = new MongoClient("mongodb://localhost:27017/TestDatabase");
+
 
             var database = dbClient.GetDatabase("TestDatabase");
             var collection = database.GetCollection<BsonDocument>("TestData");
             await CreateData(collection);
 
-            using (var cursor = await collection.WatchAsync<ChangeStreamDocument<BsonDocument>>(pipeline, changeStreamOptions).ConfigureAwait(false))
+            using (var cursor = await collection.WatchAsync(pipeline, changeStreamOptions).ConfigureAwait(false))
             {
                 while (await cursor.MoveNextAsync().ConfigureAwait(false))
                 {
@@ -87,6 +92,7 @@
                     {
                         if (cursor.Current.First().OperationType != ChangeStreamOperationType.Invalidate)
                         {
+                            var full = cursor.Current.Select(x => x.FullDocument);
                             await CreateLogInTheDatabase(cursor.Current.First(), database);
                         }
 
