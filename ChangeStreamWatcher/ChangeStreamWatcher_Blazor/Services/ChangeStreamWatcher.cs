@@ -5,6 +5,7 @@
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
+    using ChangeStreamWatcher_Blazor.Data;
     using MongoDB.Bson;
     using MongoDB.Driver;
 
@@ -24,17 +25,14 @@
         private int _counter;
         private string _operationType;
         private PipelineDefinition<ChangeStreamDocument<BsonDocument>, ChangeStreamDocument<BsonDocument>> _pipeline;
-
-        public async Task Start(EventTypes eventTypes, FilterDefinition<ChangeStreamDocument<BsonDocument>> filter)
+        public async Task Start(EventTypes eventTypes, FilterDefinition<ChangeStreamDocument<BsonDocument>> filter = null)
         {
             if (this._initialized)
             {
                 return;
                 throw new InvalidOperationException("This watcher has already been initialized!");
             }
-
             this._counter++;
-            this._initialized = true;
 
             var databaseOperationTypes = new HashSet<ChangeStreamOperationType>() { ChangeStreamOperationType.Invalidate };
 
@@ -49,29 +47,52 @@
 
             if ((eventTypes & EventTypes.Deleted) != 0)
                 databaseOperationTypes.Add(ChangeStreamOperationType.Delete);
+
+            //Test all
+            if (eventTypes == 0)
+            {
+                databaseOperationTypes.Add(ChangeStreamOperationType.Insert);
+                databaseOperationTypes.Add(ChangeStreamOperationType.Update);
+                databaseOperationTypes.Add(ChangeStreamOperationType.Replace);
+                databaseOperationTypes.Add(ChangeStreamOperationType.Delete);
+            }
+            var filters = Builders<ChangeStreamDocument<BsonDocument>>.Filter.Where(x => databaseOperationTypes.Contains(x.OperationType));
+
+            if (filter != null)
+                filters &= filter;
+
+            /// <summary>
+            ///  For example, if you are only interested in monitoring inserted documents,
+            ///  you could use a pipeline to filter the change stream to only include insert operations.
+            /// </summary>
+            /// <example>
+            ///      var pipeline = 
+            ///      new EmptyPipelineDefinition<ChangeStreamDocument<BsonDocument>>()
+            ///      .Match(x => x.OperationType == ChangeStreamOperationType.Insert);
+            /// </example>
+            this._pipeline = new IPipelineStageDefinition[] {
+                PipelineStageDefinitionBuilder.Match(filters),
+
+                PipelineStageDefinitionBuilder.Project<ChangeStreamDocument<BsonDocument>, ChangeStreamDocument<BsonDocument>>(@"
+                {
+                    _id: 1,
+                    operationType: 1,
+                    fullDocument: { $ifNull: ['$fullDocument', '$documentKey'] }
+                }"),
+            };
+
+            /// <sumary>
+            ///     FullDocument can be set to ChangeStreamFullDocumentOption.UpdateLookup if you want the change stream 
+            ///     event for Update operations to include a copy of the full document (the full document might include additional changes 
+            ///     that are the result of subsequent change events, see the server documentation here).
+            /// </sumary>
             var changeStreamOptions = new ChangeStreamOptions
             {
                 FullDocument = ChangeStreamFullDocumentOption.UpdateLookup
             };
 
-            var filters = Builders<ChangeStreamDocument<BsonDocument>>.Filter.Where(x => databaseOperationTypes.Contains(x.OperationType));
+            this._initialized = true;
 
-            if (filter != null)
-                filters &= filter;
-            this._pipeline= new EmptyPipelineDefinition<ChangeStreamDocument<BsonDocument>>().Match("{ operationType: { $in: [ 'replace', 'insert', 'update' ] } }");
-
-            //this._pipeline = new IPipelineStageDefinition[] {
-
-
-            //    PipelineStageDefinitionBuilder.Match(filters),
-
-            //    PipelineStageDefinitionBuilder.Project<ChangeStreamDocument<BsonDocument>, ChangeStreamDocument<BsonDocument>>(@"
-            //    {
-            //        _id: 1,
-            //        operationType: 1,
-            //        fullDocument: { $ifNull: ['$fullDocument', '$documentKey'] }
-            //    }")
-            //};
             await StartWatching(this._pipeline, changeStreamOptions);
         }
 
@@ -79,11 +100,9 @@
         {
             MongoClient dbClient = new MongoClient("mongodb://localhost:27017/TestDatabase");
 
-
             var database = dbClient.GetDatabase("TestDatabase");
             var collection = database.GetCollection<BsonDocument>("TestData");
             await CreateData(collection);
-
             using (var cursor = await collection.WatchAsync(pipeline, changeStreamOptions).ConfigureAwait(false))
             {
                 while (await cursor.MoveNextAsync().ConfigureAwait(false))
@@ -92,11 +111,8 @@
                     {
                         if (cursor.Current.First().OperationType != ChangeStreamOperationType.Invalidate)
                         {
-                            var full = cursor.Current.Select(x => x.FullDocument);
-                            await CreateLogInTheDatabase(cursor.Current.First(), database);
+                            await CreateLogInDB(cursor.Current.First(), database);
                         }
-
-                        this._operationType = cursor.Current.First().OperationType.ToString();
                     }
 
                 }
@@ -104,7 +120,7 @@
             }
 
         }
-        public async Task CreateLogInTheDatabase(ChangeStreamDocument<BsonDocument> cursor, IMongoDatabase database)
+        public async Task CreateLogInDB(ChangeStreamDocument<BsonDocument> cursor, IMongoDatabase database)
         {
             var collection = database.GetCollection<BsonDocument>("Logs");
             var document = new BsonDocument
