@@ -3,6 +3,7 @@
 
 
 @inject ChangeStreamWatcher watcher
+@inject IQuantumConsoleLogger logger
 
 <MudTable Items="Elements" Dense="false" Hover="true" Bordered="false" Striped="false">
     <ToolBarContent>
@@ -61,6 +62,7 @@
 
     protected override void OnInitialized()
     {
+       var test= logger.Log(LogEventLevel.Information, "Test");
         GetLogs();
     }
 

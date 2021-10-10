@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
     using ChangeStreamWatcher_Blazor.Data;
@@ -112,6 +113,10 @@
                         if (cursor.Current.First().OperationType != ChangeStreamOperationType.Invalidate)
                         {
                             await CreateLogInDB(cursor.Current.First(), database);
+                            cursor.Current.First().FullDocument.Remove("_id");
+                            var dotNetObj = BsonTypeMapper.MapToDotNetValue(cursor.Current.First().FullDocument);
+                            
+                            var serializeObject = JsonSerializer.Deserialize<Log>(dotNetObj.ToJson());
                         }
                     }
 

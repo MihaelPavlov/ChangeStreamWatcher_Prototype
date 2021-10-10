@@ -30,4 +30,8 @@
     <Content Remove="C:\Users\Owner\.nuget\packages\mongodb.driver.core\2.13.1\build\../runtimes/win/native/libzstd.dll" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Services\Mongo\" />
+  </ItemGroup>
+
 </Project>
