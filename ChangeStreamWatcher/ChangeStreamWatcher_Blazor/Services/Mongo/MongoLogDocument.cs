@@ -1,11 +1,10 @@
-﻿namespace ChangeStreamWatcher_Blazor.Data
+﻿namespace ChangeStreamWatcher_Blazor.Services.Mongo
 {
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
     using MongoDB.Bson;
-    using ChangeStreamWatcher_Blazor.Services;
     using MongoDB.Bson.Serialization.Attributes;
 
     public class MongoLogDocument : ILogDocument

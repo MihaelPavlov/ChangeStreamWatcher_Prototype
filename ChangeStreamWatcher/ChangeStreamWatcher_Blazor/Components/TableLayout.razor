@@ -1,9 +1,12 @@
 ﻿@using ChangeStreamWatcher_Blazor.Services
 @using ChangeStreamWatcher_Blazor.Data
-
+@using ChangeStreamWatcher_Blazor.Services.Enrichment
+@using ChangeStreamWatcher_Blazor.Services.Mongo
+@using ChangeStreamWatcher_Blazor.Services.Internal
+@using MongoDB.Driver
+@using MongoDB.Bson
 
 @inject ChangeStreamWatcher watcher
-@inject IQuantumConsoleLogger logger
 
 <MudTable Items="Elements" Dense="false" Hover="true" Bordered="false" Striped="false">
     <ToolBarContent>
@@ -52,6 +55,38 @@
 </MudTable>
 
 
+<h3>LogStreamTaskOverview</h3>
+<MudButton OnClick="CreateTenant">Create Tenant</MudButton>
+<MudButton OnClick="CreateCabinet">Create Cabinet</MudButton>
+
+
+<MudTable Items="this.Logs" Dense="false" Hover="true" Bordered="false" Striped="false">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Logs</MudText>
+        <MudToolBarSpacer />
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>_id</MudTh>
+        <MudTh>Time</MudTh>
+        <MudTh>Severity</MudTh>
+        <MudTh>Message</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+
+        <MudTd DataLabel="_id">@context.IpAddress</MudTd>
+        <MudTd DataLabel="Message">@context.Timestamp</MudTd>
+        <MudTd DataLabel="Message">@context.Severity</MudTd>
+        <MudTd DataLabel="Message">@context.Message</MudTd>
+
+
+
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
+
+
 @code {
 
     public List<Log> Elements { get; set; }
@@ -60,10 +95,79 @@
     private List<Log> selectedItem1 = null;
     private List<Log> selectedItems = new List<Log>();
 
-    protected override void OnInitialized()
+    public List<MongoLogDocument> Logs { get; set; }
+    public MongoLoggerService<ObjectId> MongoLoggerService { get; set; }
+    public MongoDbEmitter<ObjectId> MongoDbEmitter { get; set; }
+
+    protected override async Task OnInitializedAsync()
     {
-       var test= logger.Log(LogEventLevel.Information, "Test");
         GetLogs();
+        ///summary
+        /// Get database information , Clients , Databases ,
+        ///summary
+        MongoClient dbClient = new MongoClient("mongodb://localhost:27017/TestDatabase");
+        MongoClient dbClientLogs = new MongoClient("mongodb://localhost:27017/Logs-01");
+
+        var databaseTenants = dbClient.GetDatabase("TestData");
+        var databaseLogs = dbClientLogs.GetDatabase("Logs");
+
+
+        ///summary
+        /// To Initialize the MongoLoggerService we need ->
+        /// enricher ->
+        /// MongoLogDocumentFactory -> create MongoLogDocument FromMessage and FromException
+        /// MongoDBEmitter -> To Initiazlize we need -> Emitter is using to push all created log for the day in the database
+        ///     -> TenantInformationDistributor
+        ///     -> DateTimeServer
+        ///     -> QuantumConsoleLogger
+        /// TenantInformationDistributor
+        /// QuantumConsoleLogger
+        ///summary
+        var enricher = new EmptyEnricher();
+        var logFactory = new MongoLogDocumentFactory();
+        var dateTimeServer = new DateTimeServer();
+        var quantumConsoleLogger = new QuantumConsoleLogger();
+        var infoDistributor = new InformationDistributor<ObjectId>();
+
+        var info = new Information<ObjectId>();
+        info.Id = new ObjectId("6156bd78f75ad19e706597e9");
+        info.MongoClient = dbClient;
+        info.MainDatabase = databaseTenants;
+        info.LogsDatabase = databaseLogs;
+        infoDistributor.Provide(info);
+        var emitter = new MongoDbEmitter<ObjectId>(infoDistributor, dateTimeServer, quantumConsoleLogger);
+
+
+        var mongoServece = new MongoLoggerService<ObjectId>(enricher, logFactory, emitter, infoDistributor, quantumConsoleLogger);
+        this.MongoLoggerService = mongoServece;
+        this.MongoDbEmitter = emitter;
+
+    }
+    public void CreateCabinet()
+    {
+        //create cabinet
+        this.MongoLoggerService.Log(LogEventLevel.Verbose, "Create Cabinet");
+
+    }
+    public async Task CreateTenant()
+    {
+        //create Tenant
+        this.MongoLoggerService.Log(LogEventLevel.Verbose, "Create Tenant");
+        await this.MongoLoggerService.EmitAllLogsAsync(System.Threading.CancellationToken.None);
+        await GetAllLogs();
+
+
+    }
+    public async Task GetAllLogs()
+    {
+        var result = await this.MongoDbEmitter.GetLogs();
+        this.Logs = result.Select(x => new MongoLogDocument
+        {
+            Message = x.Message,
+            Timestamp = x.Timestamp,
+            Severity = x.Severity,
+            IpAddress = x.IpAddress,
+        }).ToList();
     }
 
     private bool FilterFunc(List<Log> logs) => Filter(searchString);

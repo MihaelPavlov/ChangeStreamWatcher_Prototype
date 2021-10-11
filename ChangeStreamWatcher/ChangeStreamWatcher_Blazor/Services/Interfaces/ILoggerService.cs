@@ -1,12 +1,14 @@
 ﻿namespace ChangeStreamWatcher_Blazor.Services
 {
-    using ChangeStreamWatcher_Blazor.Data;
     using System;
     using System.Threading;
     using System.Threading.Tasks;
 
     public interface ILoggerService
     {
+        ILogEnricher Enricher { get; }
+
+        ILogEmitter Emitter { get; }
 
         ILogDocumentFactory Factory { get; }
 
@@ -17,7 +19,7 @@
         /// </summary>
         /// <param name="level">The <see cref="LogEventLevel"/> of the log entry.</param>
         /// <param name="message">The message to log.</param>
-        ILogDocument Log(LogEventLevel level, string message);
+        void Log(LogEventLevel level, string message);
 
         /// <summary>
         /// Logs an <see cref="Exception"/> and an optional message with a given <see cref="LogEventLevel"/>.
