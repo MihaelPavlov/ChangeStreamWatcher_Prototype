@@ -4,6 +4,7 @@
     using System.Collections.Generic;
     using System.Linq;
     using System.Text.Json;
+    using System.Text.Json.Serialization;
     using System.Threading;
     using System.Threading.Tasks;
     using ChangeStreamWatcher_Blazor.Data;
@@ -112,11 +113,13 @@
                     {
                         if (cursor.Current.First().OperationType != ChangeStreamOperationType.Invalidate)
                         {
-                            await CreateLogInDB(cursor.Current.First(), database);
                             cursor.Current.First().FullDocument.Remove("_id");
                             var dotNetObj = BsonTypeMapper.MapToDotNetValue(cursor.Current.First().FullDocument);
-                            
-                            var serializeObject = JsonSerializer.Deserialize<Log>(dotNetObj.ToJson());
+                            var json = JsonSerializer.Serialize(dotNetObj);
+
+                            var serializeObject = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
+                            await CreateLogInDB(cursor.Current.First(), database, serializeObject);
+
                         }
                     }
 
@@ -125,14 +128,20 @@
             }
 
         }
-        public async Task CreateLogInDB(ChangeStreamDocument<BsonDocument> cursor, IMongoDatabase database)
+        public async Task CreateLogInDB(ChangeStreamDocument<BsonDocument> cursor, IMongoDatabase database, Dictionary<string, object> keyValuePairs)
         {
-            var collection = database.GetCollection<BsonDocument>("Logs");
-            var document = new BsonDocument
+            var collection = database.GetCollection<Log>("Logs");
+            Dictionary<string, string> dic = new Dictionary<string, string>();
+            foreach (var kvp in keyValuePairs)
             {
-                { "_id", Guid.NewGuid().ToString() },
-                { "operationType", $"{cursor.OperationType}"},
-                { "fullDocument", $"{cursor.FullDocument}"},
+                dic.Add(kvp.Key, kvp.Value.ToString());
+            }
+            var document = new Log
+            {
+                Id = Guid.NewGuid().ToString(),
+                OperationType = cursor.OperationType.ToString(),
+                FullDocument = cursor.FullDocument.ToString(),
+                KeyValuePairs = dic,
             };
 
             await collection.InsertOneAsync(document);
@@ -142,11 +151,8 @@
             var document = new BsonDocument
             {
                 { "student_id", 10000 },
-                { "scores", new BsonArray
-                    {
-                    new BsonDocument{ {"type", "exam"}, {"score", 88.12334193287023 } }
-                    }
-                }
+                { "FirstName" , "Gosho"},
+                { "LastName" , "Soc"}
             };
 
             await collection.InsertOneAsync(document);
