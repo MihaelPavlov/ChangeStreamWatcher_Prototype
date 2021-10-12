@@ -16,7 +16,7 @@ namespace ChangeStreamWatcher_Blazor.Data
 
         public string FullDocument { get; set; }
 
-        public Dictionary<string, string> KeyValuePairs { get; set; }
+        public FullDocument FullDocumentDeserialize { get; set; }
 
 
 

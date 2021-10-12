@@ -117,7 +117,7 @@
                             var dotNetObj = BsonTypeMapper.MapToDotNetValue(cursor.Current.First().FullDocument);
                             var json = JsonSerializer.Serialize(dotNetObj);
 
-                            var serializeObject = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
+                            var serializeObject = JsonSerializer.Deserialize<FullDocument>(json);
                             await CreateLogInDB(cursor.Current.First(), database, serializeObject);
 
                         }
@@ -128,20 +128,16 @@
             }
 
         }
-        public async Task CreateLogInDB(ChangeStreamDocument<BsonDocument> cursor, IMongoDatabase database, Dictionary<string, object> keyValuePairs)
+        public async Task CreateLogInDB(ChangeStreamDocument<BsonDocument> cursor, IMongoDatabase database, FullDocument keyValuePairs)
         {
             var collection = database.GetCollection<Log>("Logs");
-            Dictionary<string, string> dic = new Dictionary<string, string>();
-            foreach (var kvp in keyValuePairs)
-            {
-                dic.Add(kvp.Key, kvp.Value.ToString());
-            }
+
             var document = new Log
             {
                 Id = Guid.NewGuid().ToString(),
                 OperationType = cursor.OperationType.ToString(),
                 FullDocument = cursor.FullDocument.ToString(),
-                KeyValuePairs = dic,
+                FullDocumentDeserialize = keyValuePairs,
             };
 
             await collection.InsertOneAsync(document);
@@ -150,7 +146,7 @@
         {
             var document = new BsonDocument
             {
-                { "student_id", 10000 },
+                { "StudentId", 10000 },
                 { "FirstName" , "Gosho"},
                 { "LastName" , "Soc"}
             };

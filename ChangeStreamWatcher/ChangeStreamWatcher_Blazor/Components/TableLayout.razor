@@ -44,32 +44,40 @@
                                 <MudText Typo="Typo.body1">Full Document Details for <strong>@context.Id</strong></MudText>
                             </CardHeaderContent>
                         </MudCardHeader>
-                        <MudCardContent Class="pa-0">
-                            <MudTable Items="@context.KeyValuePairs" Context="keyValuePairs"  Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0">
-                                <ColGroup>
-                                    <col />
-                                    <col />
-                                    <col style="width:200px;" />
-                                </ColGroup>
-                                <HeaderContent>
-                                    @foreach (var item in Elements.OrderByDescending(x => x.KeyValuePairs.Keys.Count()))
-                                        {
-                                            foreach (var item2 in item.KeyValuePairs)
-                                            {
-                                            <MudTh>@item2.Key.ToString()</MudTh>
-                                            }
-                                            break;
-                                        }
-                                </HeaderContent>
-                                <RowTemplate>
-                                 
-    
-                                        <MudTh>@keyValuePairs.Value</MudTh>
-                                        
-                                    
 
-                                </RowTemplate>
-                            </MudTable>
+                        <MudCardContent Class="pa-0">
+                            @*<MudTable Items="@context.FullDocumentDeserialize" Context="fullDoc" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0">
+                                    <ColGroup>
+                                        <col />
+                                        <col />
+                                        <col style="width:200px;" />
+                                    </ColGroup>
+                                    <HeaderContent>
+                                        <MudTh>StudentId</MudTh>
+                                        <MudTh>FirstName</MudTh>
+                                        <MudTh>LastName</MudTh>
+                                        <MudTh>Test</MudTh>
+                                    </HeaderContent>
+                                    <RowTemplate>
+                                        <MudTd DataLabel="StudentId">@fullDoc.StudentId</MudTd>
+                                        <MudTd DataLabel="FirstName">@fullDoc.FirstName</MudTd>
+                                        <MudTd DataLabel="LastName">@fullDoc.LastName</MudTd>
+                                        <MudTd DataLabel="Test">@fullDoc.Test</MudTd>
+                                    </RowTemplate>
+                                </MudTable>*@
+                            <MudTh>StudentId</MudTh>
+                            <MudTh>FirstName</MudTh>
+                            <MudTh>LastName</MudTh>
+                            <MudTh>Test</MudTh>
+                            <p>
+                                <br /> 
+                            </p>
+                            <MudTd DataLabel="StudentId">@context.FullDocumentDeserialize.StudentId</MudTd>
+                            <MudTd DataLabel="FirstName">@context.FullDocumentDeserialize.FirstName</MudTd>
+                            <MudTd DataLabel="LastName">@context.FullDocumentDeserialize.LastName</MudTd>
+                            <MudTd DataLabel="Test">@context.FullDocumentDeserialize.Test</MudTd>
+
+
                         </MudCardContent>
                     </MudCard>
                 </td>
@@ -298,7 +306,6 @@
                     ShowDetails = false,
                     Id = logAr[0],
                     OperationType = logAr[1],
-                    FullDocument = logAr[2],
                 };
                 if (newLog.OperationType == searchString)
                 {
@@ -313,22 +320,25 @@
         }
         foreach (var log in logs)
         {
-            var kvp = log.GetValue("KeyValuePairs");
+            var kvp = log.GetValue("FullDocumentDeserialize");
             var logAr = log.ToArray().Select(x => x.Value.ToString()).ToArray();
             var dotNetObj = BsonTypeMapper.MapToDotNetValue(kvp);
             var json = JsonSerializer.Serialize(dotNetObj);
-            var result = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
 
-            var newLog = new Log
+            if (json != null)
             {
-                ShowDetails = false,
-                Id = logAr[0],
-                OperationType = logAr[1],
-                FullDocument = logAr[2],
-                KeyValuePairs = result
 
-            };
-            list.Add(newLog);
+                var result = JsonSerializer.Deserialize<FullDocument>(json);
+                var newLog = new Log
+                {
+                    ShowDetails = false,
+                    Id = logAr[0],
+                    OperationType = logAr[2],
+                    FullDocument = logAr[3],
+                    FullDocumentDeserialize = result,
+                };
+                list.Add(newLog);
+            }
         }
         this.Elements = list;
     }
